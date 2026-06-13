@@ -1,0 +1,149 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum SplitType {
+  EQUAL
+  EXACT
+  PERCENTAGE
+  SHARES
+}
+
+enum ExpenseType {
+  REGULAR
+  SETTLEMENT
+}
+
+model User {
+  id            Int       @id @default(autoincrement())
+  name          String
+  email         String    @unique
+  passwordHash  String
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  memberships          GroupMember[]
+
+  createdGroups        Group[] @relation("CreatedGroups")
+
+  paidExpenses         Expense[] @relation("PaidBy")
+
+  createdExpenses      Expense[] @relation("CreatedBy")
+
+  expenseParticipants  ExpenseParticipant[]
+
+  comments             Comment[]
+}
+
+model Group {
+  id            Int       @id @default(autoincrement())
+  name          String
+  description   String?
+
+  creatorId     Int
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  creator       User      @relation("CreatedGroups", fields: [creatorId], references: [id])
+
+  members        GroupMember[]
+  expenses       Expense[]
+
+  @@index([creatorId])
+}
+
+model GroupMember {
+  id          Int       @id @default(autoincrement())
+
+  groupId     Int
+  userId      Int
+
+  joinedAt    DateTime  @default(now())
+
+  group        Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user         User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, userId])
+  @@index([groupId])
+  @@index([userId])
+}
+
+model Expense {
+  id            Int         @id @default(autoincrement())
+
+  type          ExpenseType @default(REGULAR)
+
+  description   String
+
+  amount        Decimal     @db.Decimal(10,2)
+
+  notes         String?
+
+  date          DateTime
+
+  groupId       Int
+
+  payerId       Int
+  createdById   Int
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  group          Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  payer          User @relation("PaidBy", fields: [payerId], references: [id])
+
+  createdBy      User @relation("CreatedBy", fields: [createdById], references: [id])
+
+  participants   ExpenseParticipant[]
+
+  comments       Comment[]
+
+  @@index([groupId])
+  @@index([payerId])
+}
+
+model ExpenseParticipant {
+  id            Int        @id @default(autoincrement())
+
+  expenseId     Int
+  userId        Int
+
+  splitType     SplitType
+
+  amount         Decimal? @db.Decimal(10,2)
+  percentage     Decimal? @db.Decimal(5,2)
+  shares         Int?
+
+  expense        Expense @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  user           User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([expenseId, userId])
+  @@index([expenseId])
+  @@index([userId])
+}
+
+model Comment {
+  id            Int       @id @default(autoincrement())
+
+  expenseId     Int
+  senderId      Int
+
+  message       String
+
+  createdAt     DateTime @default(now())
+
+  expense        Expense @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+
+  sender         User @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([expenseId])
+}
