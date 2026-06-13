@@ -263,7 +263,6 @@ VITE_SOCKET_URL="https://your-backend-url.com
 
 ## Development Notes
 
-- Balance validations temporarily disabled in Groups module
 - All balances are derived from transaction history
 - Debt simplification uses minimum cash flow algorithm
 - Socket.IO used only for real-time delivery, not persistence
